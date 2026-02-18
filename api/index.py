@@ -7,8 +7,8 @@ app = Flask(__name__, template_folder='../templates')
 # Daftar Pasaran
 TARGET_POOLS = {
     'CAMBODIA': 'p3501', 'SYDNEY LOTTO': 'p2262', 'HONGKONG LOTTO': 'p2263', 
-    'HONGKONG POOLS': 'HK_SPECIAL', 'SINGAPORE POOLS': 'p2264', 'SYDNEY POOLS': 'sydney',
-    'DANANG':'p22816', 'PENANG':'p22817', 'PHUKET':'p28435', 'MACAU 4D': 'm17-pool-1'
+    'HONGKONG POOLS': 'HK_SPECIAL', 'SINGAPORE POOLS': 'p2264',
+    'DANANG':'p22816', 'PENANG':'p22817', 'PHUKET':'p28435', 'MACAU 4D': 'm17'
 }
 
 def fetch_results(market_code):
