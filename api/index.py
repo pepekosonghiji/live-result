@@ -21,30 +21,37 @@ def fetch_results(market_name, market_code):
         url = f"https://dk9if7ik34.salamrupiah.com/history/result-mobile/{market_code}-pool-1"
 
     try:
-        with httpx.Client(timeout=15.0, verify=False) as client:
+        # Timeout dinaikkan sedikit agar stabil saat trafik padat
+        with httpx.Client(timeout=20.0, verify=False) as client:
             r = client.get(url)
             soup = BeautifulSoup(r.text, 'html.parser')
             table = soup.find('table')
             if table:
                 rows = table.find('tbody').find_all('tr')
                 if rows:
+                    # Ambil baris pertama (terbaru)
                     tds = rows[0].find_all('td')
                     
-                    # LOGIKA HK POOLS (Ambil Kolom Indeks 1 sesuai <th>HK)
+                    # LOGIKA HK POOLS (Ambil kolom ke-2 sesuai <th>HK)
                     if market_code == "HK_SPECIAL":
                         if len(tds) >= 2:
-                            # Mengambil kolom HK (indeks 1)
-                            res_val = tds[1].text.strip()
-                            data_final["res"] = res_val if res_val != "-" else "WAIT"
-                            data_final["date"] = tds[0].text.strip()
+                            raw_val = tds[1].text.strip()
+                            # Bersihkan karakter non-angka (seperti spasi atau strip)
+                            clean_val = re.sub(r'\D', '', raw_val)
+                            if len(clean_val) == 4:
+                                data_final["res"] = clean_val
+                                data_final["date"] = tds[0].text.strip()
+                            else:
+                                data_final["res"] = "WAIT"
+                                data_final["date"] = tds[0].text.strip()
                     
-                    # LOGIKA MACAU (Kolom 2)
+                    # LOGIKA MACAU 4D (M17 - Kolom ke-3)
                     elif market_code == 'm17':
                         if len(tds) >= 3:
                             data_final["res"] = re.sub(r'\D', '', tds[2].text.strip())
                             data_final["date"] = tds[0].text.strip()
                     
-                    # LOGIKA UMUM (Kolom 3)
+                    # LOGIKA UMUM (Kolom ke-4)
                     else:
                         if len(tds) >= 4:
                             data_final["res"] = re.sub(r'\D', '', tds[3].text.strip())
@@ -56,7 +63,8 @@ def fetch_results(market_name, market_code):
 @app.route('/')
 def index():
     now = datetime.datetime.now()
-    tgl_global = now.strftime("%d %B %Y | %H:%M:%S")
+    # Format waktu global di header
+    tgl_global = now.strftime("%d %b %Y | %H:%M:%S")
     
     final_results = []
     for name, code in TARGET_POOLS.items():
