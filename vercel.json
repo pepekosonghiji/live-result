@@ -5,10 +5,5 @@
       "source": "/(.*)",
       "destination": "/api/monitor"
     }
-  ],
-  "functions": {
-    "api/*.py": {
-      "runtime": "vercel-python@3.9"
-    }
-  }
+  ]
 }
