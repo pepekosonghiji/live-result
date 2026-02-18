@@ -3,95 +3,60 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Monitoring Result</title>
+    <title>Monitoring Result Grid</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@700&family=Inter:wght@400;900&display=swap" rel="stylesheet">
     <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            background: radial-gradient(circle at top left, #1e293b, #0f172a);
+        body { font-family: 'Inter', sans-serif; background: #0f172a; }
+        .mono { font-family: 'JetBrains Mono', monospace; }
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr); /* 2 Kolom di HP */
+            gap: 12px;
         }
-        .mono {
-            font-family: 'JetBrains Mono', monospace;
+        @media (min-width: 768px) {
+            .grid-container { grid-template-columns: repeat(3, 1fr); } /* 3 Kolom di Tablet */
         }
-        .card-glass {
-            background: rgba(30, 41, 59, 0.7);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        .pulse-red {
-            box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
-            animation: pulse-red 2s infinite;
-        }
-        @keyframes pulse-red {
-            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
-            70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
-            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        @media (min-width: 1024px) {
+            .grid-container { grid-template-columns: repeat(4, 1fr); } /* 4 Kolom di Desktop */
         }
     </style>
 </head>
-<body class="min-h-screen text-slate-200 p-4 pb-12">
+<body class="p-4 pb-10 text-slate-200">
 
-    <div class="max-w-md mx-auto">
-        
-        <header class="mb-8 mt-4 text-center">
-            <h1 class="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-500 tracking-tighter italic">
-                <i class="fas fa-bolt mr-2"></i>LAST RESULT
+    <div class="max-w-5xl mx-auto">
+        <header class="mb-6 text-center">
+            <h1 class="text-2xl font-black text-yellow-500 italic uppercase tracking-tighter">
+                <i class="fas fa-bolt"></i> Live Monitoring
             </h1>
-            
-            <div class="mt-4 card-glass rounded-2xl p-4 shadow-2xl border-b-2 border-yellow-500/50">
-                <div class="text-sm font-bold text-slate-400 uppercase tracking-widest mb-1">Update Terakhir:</div>
-                <div class="text-xl font-black text-white mono tracking-tighter">
-                    <i class="far fa-clock text-yellow-500 mr-2"></i>{{ current_time }}
-                </div>
-            </div>
+            <p class="text-[10px] text-slate-500 font-mono mt-1 uppercase tracking-widest">{{ current_time }}</p>
         </header>
 
-        <div class="grid gap-4">
+        <div class="grid-container">
             {% for item in data %}
-            <div class="card-glass rounded-2xl p-5 flex justify-between items-center group hover:bg-slate-800/50 transition-all duration-300 border-l-4 {% if item.result == '----' %}border-red-500{% else %}border-cyan-500{% endif %}">
+            <div class="bg-slate-800/50 border border-slate-700 rounded-xl p-3 flex flex-col items-center justify-center text-center shadow-lg hover:border-cyan-500/50 transition-all">
+                <span class="text-[9px] font-black text-cyan-500 uppercase tracking-widest mb-1">{{ item.name }}</span>
                 
-                <div class="flex flex-col">
-                    <span class="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-1">Pasaran</span>
-                    <h3 class="text-base font-black text-slate-100 tracking-tight group-hover:text-cyan-400 transition-colors">
-                        {{ item.name }}
-                    </h3>
-                </div>
-
-                <div class="flex flex-col items-end">
-                    <span class="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-1">Angka Keluar</span>
-                    <div class="text-3xl font-black mono tracking-widest {% if item.result == '----' %}text-red-500 animate-pulse{% else %}text-green-400{% endif %}">
-                        {{ item.result }}
-                    </div>
-                </div>
+                <span class="text-[8px] text-slate-500 mb-2 mono">{{ item.date }}</span>
                 
+                <div class="text-2xl font-black mono tracking-widest {% if item.result == '----' %}text-red-500{% else %}text-green-400{% endif %}">
+                    {{ item.result }}
+                </div>
             </div>
             {% endfor %}
         </div>
 
-        <footer class="mt-10 text-center space-y-6">
-            <button onclick="window.location.reload()" class="bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-black py-4 px-10 rounded-2xl shadow-xl shadow-yellow-500/20 transform active:scale-95 transition-all w-full flex justify-center items-center gap-3">
-                <i class="fas fa-sync-alt"></i> REFRESH DATA
+        <div class="mt-8 flex flex-col items-center gap-4">
+            <button onclick="window.location.reload()" class="w-full max-w-xs bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-black py-3 rounded-xl shadow-lg transition-transform active:scale-95 text-sm uppercase">
+                <i class="fas fa-sync-alt mr-2"></i> Perbarui Data
             </button>
-            
-            <div class="flex justify-center items-center gap-2">
-                <span class="relative flex h-3 w-3">
-                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                    <span class="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
-                </span>
-                <p class="text-[10px] text-slate-500 font-bold uppercase tracking-[0.3em]">
-                    Monitoring {{ data | length }} Pasaran Aktif
-                </p>
+            <div class="flex items-center gap-2">
+                <span class="h-2 w-2 rounded-full bg-green-500 animate-pulse"></span>
+                <span class="text-[9px] text-slate-500 uppercase font-bold tracking-[0.2em]">Sistem Aktif</span>
             </div>
-        </footer>
-
+        </div>
     </div>
 
-    <script>
-        setTimeout(function(){
-           window.location.reload();
-        }, 300000); 
-    </script>
 </body>
 </html>
