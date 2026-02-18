@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MONITORING RESULT</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-white p-5">
+    <div class="max-w-md mx-auto">
+        <h1 class="text-2xl font-bold mb-5 border-b border-yellow-500 pb-2 text-yellow-500">🎯 LAST RESULT</h1>
+        <div class="space-y-3">
+            {% for item in data %}
+            <div class="flex justify-between items-center bg-gray-800 p-4 rounded-lg shadow-md border-l-4 border-blue-500">
+                <span class="font-bold tracking-wide">{{ item.name }}</span>
+                <span class="text-2xl font-mono text-green-400 font-black">{{ item.result }}</span>
+            </div>
+            {% endfor %}
+        </div>
+        <footer class="mt-10 text-center text-gray-500 text-xs">
+            Auto-Updated: {{ data | length }} Markets Tracked
+        </footer>
+    </div>
+</body>
+</html>
