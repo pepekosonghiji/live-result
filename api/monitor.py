@@ -1,98 +1,88 @@
-import os, re, httpx, random
+import os, re, httpx
 from flask import Flask, render_template, jsonify
 from bs4 import BeautifulSoup
-from datetime import datetime
 
-app = Flask(__name__, template_folder='.')
+app = Flask(__name__)
 
-# --- [TARGET POOLS CONFIG] ---
+# --- [DATA PASARAN - MONITORING ONLY] ---
 TARGET_POOLS = {
-    'BUSAN POOLS':'p16063', 
-    'JEJU':'p22815',
-    'CAMBODIA': 'p3501', 
-    'SYDNEY LOTTO': 'p2262', 
-    'HONGKONG LOTTO': 'p2263', 
-    'HONGKONG POOLS': 'HK_SPECIAL', 
-    'SINGAPORE POOLS': 'p2264', 
-    'SYDNEY POOLS': 'sydney',
-    'OSAKA':'p28422', 
-    'DANANG':'p22816',
-    'PENANG':'p22817', 
-    'SEOUL':'p28502', 
-    'TORONTOMID':'p13976', 
-    'SAPPORO':'p22814',
-    'PHUKET':'p28435', 
-    'WUHAN':'p28615', 
-    'MACAU 4D': 'm17-pool-1'
+    'CAMBODIA': 'p3501', 'SYDNEY LOTTO': 'p2262', 'HONGKONG LOTTO': 'p2263', 
+    'HONGKONG POOLS': 'HK_SPECIAL', 'SINGAPORE POOLS': 'p2264', 'SYDNEY POOLS': 'sydney',
+    'BUSAN POOLS':'p16063', 'OSAKA':'p28422', 'JEJU':'p22815', 'DANANG':'p22816',
+    'PENANG':'p22817', 'SEOUL':'p28502', 'TORONTOMID':'p13976', 'SAPPORO':'p22814',
+    'PHUKET':'p28435', 'WUHAN':'p28615', 'MACAU 4D': 'm17-pool-1'
 }
 
-def get_proxies():
-    path = os.path.join(os.getcwd(), 'proxy.txt')
-    if not os.path.exists(path): return []
-    with open(path, 'r', encoding='utf-8') as f:
-        return [p.strip().replace('socks5', 'socks5h').replace('socks4', 'socks4h') for p in f if p.strip()]
-
-def fetch_last_result(market_name, proxy=None):
-    market_code = TARGET_POOLS.get(market_name)
-    p_config = {'http://': proxy, 'https://': proxy} if proxy else None
-    
-    # Khusus Hongkong Pools
-    if market_name == "HONGKONG POOLS":
+# --- [SCRAPER ENGINE - VERSI OPTIMAL] ---
+def fetch_results(market_code):
+    results = []
+    # Jalur Khusus HK Special
+    if market_code == "HK_SPECIAL":
         try:
-            with httpx.Client(timeout=10.0, verify=False, proxies=p_config) as client:
+            with httpx.Client(timeout=10.0, verify=False) as client:
                 r = client.get("https://tabelsemalam.com/")
                 soup = BeautifulSoup(r.text, 'html.parser')
                 table = soup.find('table')
                 if table:
-                    val = table.find('tbody').find_all('tr')[0].find_all('td')[1].text.strip()
-                    return list(val) if len(val) == 4 else ["-","-","-","-"]
-        except: return ["E","R","R","!"]
+                    for row in table.find('tbody').find_all('tr'):
+                        tds = row.find_all('td')
+                        if len(tds) >= 2:
+                            val = tds[1].text.strip()
+                            if val.isdigit() and len(val) == 4: 
+                                results.append(val)
+            if results: return results
+        except: pass
 
-    # Scraper Standar (Busan, Jeju, dll)
+    # Jalur Umum Pasaran Lain
     urls = [
-        f"https://dk9if7ik34.salamrupiah.com/history/result-mobile/{market_code}",
-        f"https://9yjus6z6kz.salamrupiah.com/history/result-mobile/{market_code}"
+        f"https://dk9if7ik34.salamrupiah.com/history/result-mobile/{market_code}-pool-1", 
+        f"https://dk9if7ik34.salamrupiah.com/history/result-mobile/kia_{market_code}",
+        f"https://9yjus6z6kz.salamrupiah.com/history/result-mobile/{market_code}" # Backup Link
     ]
-
+    
     for url in urls:
         try:
-            with httpx.Client(timeout=10.0, verify=False, proxies=p_config) as client:
+            with httpx.Client(timeout=10.0, verify=False) as client:
                 r = client.get(url)
                 soup = BeautifulSoup(r.text, 'html.parser')
                 table = soup.find('table', class_='table-history')
                 if table:
-                    first_row = table.find('tbody').find_all('tr')[0]
-                    tds = first_row.find_all('td')
-                    val = re.sub(r'\D', '', tds[-1].text.strip())
-                    if len(val) >= 4: return list(val[-4:]) # Ambil 4 angka terakhir
+                    for row in table.find('tbody').find_all('tr'):
+                        tds = row.find_all('td')
+                        if len(tds) >= 4:
+                            val = re.sub(r'\D', '', tds[3].text.strip())
+                            if len(val) == 4: 
+                                results.append(val)
+            if results: break # Berhenti jika sudah dapat data
         except: continue
-    
-    return ["N","A","N","A"]
+    return results
+
+# --- [ROUTES API MONITOR] ---
+@app.route('/api/results')
+def get_all_monitor():
+    """Mengambil semua hasil terakhir untuk dashboard utama"""
+    monitor_data = {}
+    for name, code in TARGET_POOLS.items():
+        data = fetch_results(code)
+        monitor_data[name] = data[0] if data else "PENDING"
+    return jsonify(monitor_data)
+
+@app.route('/api/last/<market>')
+def get_single(market):
+    """Cek last result pasaran tertentu secara cepat"""
+    m_upper = market.upper()
+    if m_upper in TARGET_POOLS:
+        data = fetch_results(TARGET_POOLS[m_upper])
+        return jsonify({
+            "status": "success",
+            "market": m_upper,
+            "last": data[0] if data else "N/A"
+        })
+    return jsonify({"status": "error", "msg": "Pasaran tidak ada"}), 404
 
 @app.route('/')
-def index():
-    proxies = get_proxies()
-    proxy = random.choice(proxies) if proxies else None
-    
-    # Ambil data utama untuk dashboard
-    busan_res = fetch_last_result('BUSAN POOLS', proxy)
-    jeju_res = fetch_last_result('JEJU', proxy)
-    
-    # Data tambahan untuk info di footer
-    check_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    
-    return render_template('index.html', 
-                           busan=busan_res, 
-                           jeju=jeju_res, 
-                           proxy_used=proxy if proxy else "DIRECT",
-                           time_now=check_time)
+def dashboard():
+    return render_template('index.html', markets=sorted(TARGET_POOLS.keys()))
 
-# Helper route jika ingin cek via JSON
-@app.route('/api/monitor')
-def monitor_all():
-    summary = {m: "".join(fetch_last_result(m)) for m in TARGET_POOLS.keys()}
-    return jsonify(summary)
-
-# Penting agar Vercel bisa membaca app Flask
-def handler(request):
-    return app(request)
+if __name__ == '__main__':
+    app.run(debug=True)
