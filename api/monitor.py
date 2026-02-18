@@ -4,55 +4,46 @@ from bs4 import BeautifulSoup
 import random
 import os
 
-def load_proxies():
+def get_proxies():
     proxies_list = []
-    # Membaca proxy.txt yang ada di root folder
-    try:
-        path = os.path.join(os.getcwd(), 'proxy.txt')
+    path = os.path.join(os.path.dirname(__file__), '..', 'proxy.txt')
+    if os.path.exists(path):
         with open(path, 'r') as f:
             for line in f:
-                proxy = line.strip()
-                if proxy:
-                    if proxy.startswith('socks5'):
-                        proxy = proxy.replace('socks5', 'socks5h')
-                    elif proxy.startswith('socks4'):
-                        proxy = proxy.replace('socks4', 'socks4h')
-                    proxies_list.append(proxy)
-    except Exception:
-        pass
+                p = line.strip()
+                if p:
+                    # Otomatis ubah ke h-protocol untuk bypass DNS
+                    if p.startswith('socks5'): p = p.replace('socks5', 'socks5h')
+                    elif p.startswith('socks4'): p = p.replace('socks4', 'socks4h')
+                    proxies_list.append(p)
     return proxies_list
 
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         url = "http://busanpools.asia/live.php?time=Result"
-        proxies_pool = load_proxies()
+        proxies = get_proxies()
         
-        if not proxies_pool:
-            result_text = "Error: No proxies in proxy.txt"
-        else:
-            selected_proxy = random.choice(proxies_pool)
-            proxy_config = {'http': selected_proxy, 'https': selected_proxy}
-            headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0 Safari/537.36'}
+        selected_proxy = random.choice(proxies) if proxies else None
+        proxy_config = {'http': selected_proxy, 'https': selected_proxy} if selected_proxy else {}
+        
+        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0 Safari/537.36'}
 
-            try:
-                response = requests.get(url, headers=headers, proxies=proxy_config, timeout=10)
-                if response.status_code == 200:
-                    soup = BeautifulSoup(response.text, 'html.parser')
-                    prize1_section = soup.find('td', id='prize1')
-                    if prize1_section:
-                        balls = prize1_section.find_all('span', class_='ball')
-                        numbers = "".join([ball.text.strip() for ball in balls])
-                        result_text = f"SUCCESS: 1st Prize {numbers} (via {selected_proxy})"
-                    else:
-                        result_text = "HTML Structure Changed"
-                else:
-                    result_text = f"HTTP Error {response.status_code}"
-            except Exception as e:
-                result_text = f"Failed via {selected_proxy}: {str(e)[:50]}"
+        try:
+            r = requests.get(url, headers=headers, proxies=proxy_config, timeout=10)
+            soup = BeautifulSoup(r.text, 'html.parser')
+            prize_section = soup.find('td', id='prize1')
+            
+            if prize_section:
+                balls = "".join([b.text.strip() for b in prize_section.find_all('span', class_='ball')])
+                output = f"1st PRIZE: {balls if balls else 'PENDING'}"
+            else:
+                output = "Error: Elemen tidak ditemukan. Struktur web mungkin berubah."
+        except Exception as e:
+            output = f"Error: {str(e)}"
 
-        # Response untuk Vercel (dan Cron Job)
+        # Mengirim response ke browser
         self.send_response(200)
         self.send_header('Content-type', 'text/plain')
         self.end_headers()
-        self.wfile.write(result_text.encode())
+        self.wfile.write(output.encode('utf-8'))
         return
