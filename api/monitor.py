@@ -1,9 +1,30 @@
-from http.server import BaseHTTPRequestHandler
-import requests
+import os, re, httpx, random
+from flask import Flask, render_template, jsonify
 from bs4 import BeautifulSoup
-import random
-import os
 from datetime import datetime
+
+app = Flask(__name__, template_folder='.')
+
+# --- [TARGET POOLS CONFIG] ---
+TARGET_POOLS = {
+    'BUSAN POOLS':'p16063', 
+    'JEJU':'p22815',
+    'CAMBODIA': 'p3501', 
+    'SYDNEY LOTTO': 'p2262', 
+    'HONGKONG LOTTO': 'p2263', 
+    'HONGKONG POOLS': 'HK_SPECIAL', 
+    'SINGAPORE POOLS': 'p2264', 
+    'SYDNEY POOLS': 'sydney',
+    'OSAKA':'p28422', 
+    'DANANG':'p22816',
+    'PENANG':'p22817', 
+    'SEOUL':'p28502', 
+    'TORONTOMID':'p13976', 
+    'SAPPORO':'p22814',
+    'PHUKET':'p28435', 
+    'WUHAN':'p28615', 
+    'MACAU 4D': 'm17-pool-1'
+}
 
 def get_proxies():
     path = os.path.join(os.getcwd(), 'proxy.txt')
@@ -11,52 +32,67 @@ def get_proxies():
     with open(path, 'r', encoding='utf-8') as f:
         return [p.strip().replace('socks5', 'socks5h').replace('socks4', 'socks4h') for p in f if p.strip()]
 
-def scrape_data(url, proxy, headers):
-    try:
-        p_config = {'http': proxy, 'https': proxy} if proxy else {}
-        r = requests.get(url, headers=headers, proxies=p_config, timeout=10)
-        soup = BeautifulSoup(r.text, 'html.parser')
-        p_section = soup.find('td', id='prize1')
-        
-        if p_section:
-            # Ambil angka dari span (berlaku untuk Busan & Jeju)
-            balls = [s.text.strip() for s in p_section.find_all('span') if s.text.strip().isdigit()]
-            return ("SUCCESS", balls) if balls else ("PENDING", None)
-        return ("NOT_FOUND", None)
-    except Exception as e:
-        return (f"ERROR: {str(e)[:20]}", None)
+def fetch_last_result(market_name, proxy=None):
+    market_code = TARGET_POOLS.get(market_name)
+    p_config = {'http://': proxy, 'https://': proxy} if proxy else None
+    
+    # Khusus Hongkong Pools
+    if market_name == "HONGKONG POOLS":
+        try:
+            with httpx.Client(timeout=10.0, verify=False, proxies=p_config) as client:
+                r = client.get("https://tabelsemalam.com/")
+                soup = BeautifulSoup(r.text, 'html.parser')
+                table = soup.find('table')
+                if table:
+                    val = table.find('tbody').find_all('tr')[0].find_all('td')[1].text.strip()
+                    return list(val) if len(val) == 4 else ["-","-","-","-"]
+        except: return ["E","R","R","!"]
 
-class handler(BaseHTTPRequestHandler):
-    def do_GET(self):
-        # 1. Setup Request
-        proxies = get_proxies()
-        selected_proxy = random.choice(proxies) if proxies else None
-        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0'}
+    # Scraper Standar (Busan, Jeju, dll)
+    urls = [
+        f"https://dk9if7ik34.salamrupiah.com/history/result-mobile/{market_code}",
+        f"https://9yjus6z6kz.salamrupiah.com/history/result-mobile/{market_code}"
+    ]
 
-        # 2. Ambil Data
-        res_busan = scrape_data("http://busanpools.asia/live.php?time=Result", selected_proxy, headers)
-        res_jeju = scrape_data("http://jejupools.asia/live.php?time=Pools", selected_proxy, headers)
+    for url in urls:
+        try:
+            with httpx.Client(timeout=10.0, verify=False, proxies=p_config) as client:
+                r = client.get(url)
+                soup = BeautifulSoup(r.text, 'html.parser')
+                table = soup.find('table', class_='table-history')
+                if table:
+                    first_row = table.find('tbody').find_all('tr')[0]
+                    tds = first_row.find_all('td')
+                    val = re.sub(r'\D', '', tds[-1].text.strip())
+                    if len(val) >= 4: return list(val[-4:]) # Ambil 4 angka terakhir
+        except: continue
+    
+    return ["N","A","N","A"]
 
-        # 3. Helper untuk render bola
-        def render_balls(res_tuple, css_class):
-            status, data = res_tuple
-            if status == "SUCCESS":
-                return "".join([f'<div class="ball {css_class}">{n}</div>' for n in data])
-            return f'<div class="status">-- {status} --</div>'
+@app.route('/')
+def index():
+    proxies = get_proxies()
+    proxy = random.choice(proxies) if proxies else None
+    
+    # Ambil data utama untuk dashboard
+    busan_res = fetch_last_result('BUSAN POOLS', proxy)
+    jeju_res = fetch_last_result('JEJU', proxy)
+    
+    # Data tambahan untuk info di footer
+    check_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    return render_template('index.html', 
+                           busan=busan_res, 
+                           jeju=jeju_res, 
+                           proxy_used=proxy if proxy else "DIRECT",
+                           time_now=check_time)
 
-        # 4. Baca Template HTML
-        template_path = os.path.join(os.path.dirname(__file__), 'index.html')
-        with open(template_path, 'r') as f:
-            content = f.read()
+# Helper route jika ingin cek via JSON
+@app.route('/api/monitor')
+def monitor_all():
+    summary = {m: "".join(fetch_last_result(m)) for m in TARGET_POOLS.keys()}
+    return jsonify(summary)
 
-        # 5. Inject Data ke HTML
-        content = content.replace('{{BUSAN_RESULT}}', render_balls(res_busan, 'b-ball'))
-        content = content.replace('{{JEJU_RESULT}}', render_balls(res_jeju, 'j-ball'))
-        content = content.replace('{{TIME}}', datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-        content = content.replace('{{PROXY}}', selected_proxy if selected_proxy else "DIRECT")
-
-        # 6. Kirim Response
-        self.send_response(200)
-        self.send_header('Content-type', 'text/html')
-        self.end_headers()
-        self.wfile.write(content.encode('utf-8'))
+# Penting agar Vercel bisa membaca app Flask
+def handler(request):
+    return app(request)
