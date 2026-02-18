@@ -1,2 +1,3 @@
-requests[socks]
+flask
+httpx
 beautifulsoup4
