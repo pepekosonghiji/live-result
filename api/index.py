@@ -11,14 +11,12 @@ TARGET_POOLS = {
 }
 
 def fetch_results(market_name, market_code):
-    # Default data jika gagal
     data_final = {"res": "----", "date": "-"}
     
-    # URL Logic
-    if market_code == 'm17':
-        url = "https://9yjus6z6kz.salamrupiah.com/history/result-mobile/m17-pool-1"
-    elif market_code == "HK_SPECIAL":
+    if market_code == "HK_SPECIAL":
         url = "https://tabelsemalam.com/"
+    elif market_code == 'm17':
+        url = "https://9yjus6z6kz.salamrupiah.com/history/result-mobile/m17-pool-1"
     else:
         url = f"https://dk9if7ik34.salamrupiah.com/history/result-mobile/{market_code}-pool-1"
 
@@ -32,19 +30,21 @@ def fetch_results(market_name, market_code):
                 if rows:
                     tds = rows[0].find_all('td')
                     
-                    # Logika HK Special (Struktur Tabel Berbeda)
+                    # LOGIKA HK POOLS (Ambil Kolom Indeks 1 sesuai <th>HK)
                     if market_code == "HK_SPECIAL":
                         if len(tds) >= 2:
-                            data_final["res"] = tds[1].text.strip()
+                            # Mengambil kolom HK (indeks 1)
+                            res_val = tds[1].text.strip()
+                            data_final["res"] = res_val if res_val != "-" else "WAIT"
                             data_final["date"] = tds[0].text.strip()
                     
-                    # Logika Macau (Kolom 2)
+                    # LOGIKA MACAU (Kolom 2)
                     elif market_code == 'm17':
                         if len(tds) >= 3:
                             data_final["res"] = re.sub(r'\D', '', tds[2].text.strip())
                             data_final["date"] = tds[0].text.strip()
                     
-                    # Logika Umum (Kolom 3)
+                    # LOGIKA UMUM (Kolom 3)
                     else:
                         if len(tds) >= 4:
                             data_final["res"] = re.sub(r'\D', '', tds[3].text.strip())
