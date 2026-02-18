@@ -12,8 +12,6 @@
         .busan-title { color: #ff4d4d; }
         .jeju-title { color: #ffd51d; }
         .balls-row { display: flex; justify-content: center; flex-wrap: wrap; gap: 10px; margin: 20px 0; min-height: 55px; align-items: center; }
-        
-        /* Gaya Bola */
         .ball { 
             width: 42px; height: 42px; border-radius: 50%; display: flex; justify-content: center; 
             align-items: center; font-size: 1.2rem; font-weight: bold; color: #fff;
@@ -21,31 +19,38 @@
         }
         .b-ball { background: radial-gradient(circle at 30% 30%, #ff5f6d, #7a0000); border: 2px solid #ff4d4d; }
         .j-ball { background: radial-gradient(circle at 30% 30%, #205da8, #102e52); border: 2px solid #ffd51d; color: #ffd51d; }
-        
-        .status { color: #666; font-style: italic; font-size: 0.85rem; padding: 10px; border: 1px dashed #444; border-radius: 8px; width: 100%; }
-        .refresh { display: block; width: 100%; padding: 15px; background: #333; color: #fff; text-decoration: none; border-radius: 10px; font-weight: bold; text-align: center; transition: 0.3s; box-sizing: border-box; }
-        .refresh:hover { background: #444; transform: scale(1.02); }
-        .footer { text-align: center; font-size: 0.7rem; color: #444; margin-top: 15px; line-height: 1.6; }
+        .refresh { display: block; width: 100%; padding: 15px; background: #333; color: #fff; text-decoration: none; border-radius: 10px; font-weight: bold; text-align: center; margin-bottom: 10px; }
+        #capBtn { display: block; width: 100%; padding: 15px; background: #205da8; color: #fff; text-decoration: none; border-radius: 10px; font-weight: bold; text-align: center; }
+        .footer { text-align: center; font-size: 0.7rem; color: #444; margin-top: 15px; }
     </style>
 </head>
 <body>
     <div class="wrapper">
         <div class="card">
             <h2 class="busan-title">BUSAN POOLS</h2>
-            <div class="balls-row">{{BUSAN_RESULT}}</div>
+            <div class="balls-row">
+                {% for n in busan %}
+                <div class="ball b-ball">{{ n }}</div>
+                {% endfor %}
+            </div>
         </div>
 
         <div class="card">
             <h2 class="jeju-title">JEJU POOLS</h2>
-            <div class="balls-row">{{JEJU_RESULT}}</div>
+            <div class="balls-row">
+                {% for n in jeju %}
+                <div class="ball j-ball">{{ n }}</div>
+                {% endfor %}
+            </div>
         </div>
 
         <a href="javascript:location.reload()" class="refresh">REFRESH RESULT</a>
+        <a href="https://live-hasil.vercel.app/" id="capBtn">GO TO LIVE HASIL</a>
         
         <div class="footer">
-            CHECKED AT: {{TIME}}<br>
-            PROXY: {{PROXY}}<br>
-            SERVER: VERCEL SERVERLESS
+            CHECKED AT: {{ time_now }}<br>
+            PROXY: {{ proxy_used }}<br>
+            SERVER: VERCEL FLASK
         </div>
     </div>
 </body>
