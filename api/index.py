@@ -9,7 +9,7 @@ TARGET_POOLS = {
     'HONGKONG POOLS': 'HK_SPECIAL', 'SINGAPORE POOLS': 'p2264', 'SYDNEY POOLS': 'sydney',
     'BUSAN POOLS':'p16063', 'OSAKA':'p28422', 'JEJU':'p22815', 'DANANG':'p22816',
     'PENANG':'p22817', 'SEOUL':'p28502', 'TORONTOMID':'p13976', 'SAPPORO':'p22814',
-    'PHUKET':'p28435', 'WUHAN':'p28615','MACAU 4D':'MACAU_TRIGGER','OREGON 3':'p12521'
+    'PHUKET':'p28435', 'WUHAN':'p28615','MACAU 4D':'m17','OREGON 3':'p12521'
 }
 
 def fetch_results(market_name, market_code):
