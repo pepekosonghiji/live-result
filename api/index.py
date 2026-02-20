@@ -6,7 +6,7 @@ app = Flask(__name__, template_folder='../templates')
 
 TARGET_POOLS = {
     'CAMBODIA': 'p3501', 'SYDNEY LOTTO': 'p2262', 'HONGKONG LOTTO': 'p2263', 
-    'HONGKONG POOLS': 'HK_SPECIAL', 'SINGAPORE POOLS': 'p2264', 'SYDNEY POOLS': 'sydney',
+    'HONGKONG POOLS': 'HK_SPECIAL', 'SINGAPORE POOLS': 'p2264',
     'BUSAN POOLS':'p16063', 'OSAKA':'p28422', 'JEJU':'p22815', 'DANANG':'p22816',
     'PENANG':'p22817', 'SEOUL':'p28502', 'TORONTOMID':'p13976', 'SAPPORO':'p22814',
     'PHUKET':'p28435', 'WUHAN':'p28615','MACAU 4D':'m17','OREGON 3':'p12521',
