@@ -89,100 +89,115 @@ def fetch_results(market_code):
 
 def get_comprehensive_logic(all_res_data, market_name):
     """
-    UNIVERSAL QUANTUM MONSTER V20.0
-    Metode: Statistik Terapan, Chaos Theory, & Cross-Prize Verification.
-    Verifikasi Berlapis: 15 Layer Filtering.
+    QUANTUM HYPER-DIMENSION V23.0
+    Fokus: Anti-Cluster Shield, Triple-Digit Resonance, & Matrix Positioning.
     """
     last_p1 = all_res_data[0][0]  
-    p1_hist = [d[0] for d in all_res_data] 
+    p1_list = [d[0] for d in all_res_data] 
     p2_last = all_res_data[0][1] if len(all_res_data[0]) > 1 and all_res_data[0][1] else "0000"
     p3_last = all_res_data[0][2] if len(all_res_data[0]) > 2 and all_res_data[0][2] else "0000"
 
-    # --- LAYER 1: ANALISA DATA HISTORIS (7-14-30 HARI) ---
-    all_digits = "".join(p1_hist[:30])
-    freq_map = Counter(all_digits)
-    cold_digits = [str(i) for i in range(10) if freq_map[str(i)] == 0] # Angka Mati/Dingin
-
-    # --- LAYER 2: SCORING BBFS (WEIGHTED PROBABILITY) ---
+    # --- 1. CLUSTER DETECTION (ANTI-ANOMALI) ---
+    # Melacak angka yang mendominasi P1, P2, P3 (seperti angka 1 di result 1181)
+    all_p_data = last_p1 + p2_last + p3_last
+    cluster_map = Counter(all_p_data)
+    # Angka yang muncul > 2x dalam satu putaran dianggap 'Cluster'
+    hot_clusters = [num for num, count in cluster_map.items() if count >= 2]
+    
+    # Deteksi Pola Sandwich & Twin Depan/Belakang
+    is_sandwich = last_p1[0] == last_p1[3]
+    is_twin_front = last_p1[0] == last_p1[1]
+    is_twin_back = last_p1[2] == last_p1[3]
+    
+    # --- 2. ADVANCED SCORING (DIMENSION SHIFT) ---
+    all_7d = "".join(p1_list[:7])
+    counts_7d = Counter(all_7d)
+    
     scores = {str(i): 0 for i in range(10)}
     for d in scores:
-        # A. Faktor Angka Dingin (High Reward)
-        if d in cold_digits: scores[d] += 75
-        # B. Faktor Resonansi Prize 2 & 3
-        if d in p2_last: scores[d] += 55
-        if d in p3_last: scores[d] += 45
-        # C. Faktor Mistik-Indeks-Taysen (Mirroring)
-        if d in [ML.get(x) for x in last_p1]: scores[d] += 35
-        if d in [ID.get(x) for x in last_p1]: scores[d] += 30
-        # D. Frekuensi Terbalik (Mengejar angka yang jarang keluar)
-        scores[d] += (30 - freq_map[d]) * 2
+        # A. Cluster Bonus: Jika angka muncul kuat di P2/P3, dia wajib masuk radar
+        if d in hot_clusters: scores[d] += 180
+        # B. Shadow Resonance: Indeks & Mistik dari P2/P3 (Bukan cuma P1)
+        if d in [ID.get(x) for x in (p2_last + p3_last)]: scores[d] += 70
+        # C. Missing Gap: Angka yang benar-benar hilang dalam 10 hari terakhir
+        if counts_7d[d] == 0: scores[d] += 200
+        # D. Taysen Shift: Mencari angka 'lompatan'
+        if d in [TY.get(x) for x in last_p1]: scores[d] += 50
 
-    top_digits = "".join([x[0] for x in sorted(scores.items(), key=lambda x: x[1], reverse=True)[:7]])
-    bbfs_6d = top_digits[:6]
+    top_digits = "".join([x[0] for x in sorted(scores.items(), key=lambda x: x[1], reverse=True)[:6]])
 
-    # --- LAYER 3: ANALISA BIJI & POLARITY (Symmetry Check) ---
-    biji_counts = Counter([(sum(int(d) for d in res) % 9 or 9) for res in p1_hist[:15]])
-    hot_biji = [b[0] for b in biji_counts.most_common(4)]
+    # --- 3. BIJI HYPER (Multi-Layer Sum) ---
+    biji_hist = [(sum(int(d) for d in res) % 9 or 9) for res in p1_list[:20]]
+    # Menghindari Biji yang baru keluar & memprioritaskan Biji yang sedang 'Haus' (Jarang muncul)
+    biji_target = [b for b, c in Counter(biji_hist).most_common()[-4:]]
 
-    # --- LAYER 4: GENERASI 2D JITU (Cross-Verification) ---
+    # --- 4. FILTRASI BRUTAL (7 DIMENSI) ---
     raw_2d = [''.join(p) for p in itertools.product(top_digits, repeat=2)]
-    verified_2d = []
-    seen_2d = set()
+    hyper_2d = []
+    seen = set()
 
     for line in raw_2d:
-        if line in seen_2d: continue
+        if line in seen: continue
         h, t = line[0], line[1]
+        b_line = (int(h) + int(t)) % 9 or 9
         score_2d = 0
-        biji_2d = (int(h) + int(t)) % 9 or 9
 
-        # Filter Biji (Verifikasi 1)
-        if biji_2d in hot_biji: score_2d += 150
-        # Filter Resonansi (Verifikasi 2)
-        if h in p2_last or t in p2_last: score_2d += 80
-        # Filter Jarak Ganjil-Genap (Verifikasi 3)
-        if int(h) % 2 != int(t) % 2: score_2d += 60
-        # Filter Mistik-Match (Verifikasi 4)
-        if ML.get(h) == t or ID.get(h) == t: score_2d += 40
-        # Anti-Repeat (Verifikasi 5)
-        if line == last_p1[2:] or line == last_p1[:2]: score_2d -= 300
+        # GERBANG 1: Biji Hyper (Wajib lolos)
+        if b_line not in biji_target: continue
 
-        if score_2d > 100: # Threshold ketat
-            verified_2d.append((line, score_2d))
-            seen_2d.add(line)
+        # GERBANG 2: Cluster Connection
+        if any(d in hot_clusters for d in [h, t]): score_2d += 250
+        
+        # GERBANG 3: Polarity Logic (Odd-Even Balance)
+        if (int(h) % 2) != (int(t) % 2): score_2d += 120
+        
+        # GERBANG 4: High-Low Split
+        if (int(h) >= 5 and int(t) < 5) or (int(h) < 5 and int(t) >= 5): score_2d += 100
 
-    top2 = [x[0] for x in sorted(verified_2d, key=lambda x: x[1], reverse=True)[:15]]
+        # GERBANG 5: Anti-Zonk (Buang angka yang sama persis dengan 2D terakhir)
+        if line == last_p1[2:]: continue
 
-    # --- LAYER 5: KONSTRUKSI 3D & 4D (Position Dynamics) ---
+        # GERBANG 6: Twin Shield 3.0 (Deteksi Twin Balasan)
+        if h == t:
+            # Jika kemarin Twin (1181), hari ini Twin hanya boleh muncul jika skor sangat tinggi
+            if is_twin_front or is_twin_back: score_2d += 150
+            elif any(d in hot_clusters for d in h): score_2d += 200
+            else: continue # Buang twin tanpa dasar cluster
+
+        hyper_2d.append((line, score_2d))
+        seen.add(line)
+
+    # SORTING TOP 5 (Sangat Selektif)
+    top2 = [x[0] for x in sorted(hyper_2d, key=lambda x: x[1], reverse=True)[:5]]
+
+    # --- 5. HYPER 3D/4D (MATRIX POSITIONING) ---
     top3, top4 = [], []
-    seen_3d, seen_4d = set(), set()
-
     for i, l2 in enumerate(top2):
-        # Penentuan As & Kop menggunakan pergeseran Mistik & Taysen Prize 2
         try:
-            # As: Mengambil Mistik Baru dari P1 dengan rotasi indeks
-            asn = MB.get(last_p1[i % 4], TY.get(last_p1[1]))
-            # Kop: Mengambil Indeks dari Prize 2 sebagai filter bayangan
-            kop = ID.get(p2_last[i % 4] if p2_last != "0000" else last_p1[0])
+            # Menggunakan kombinasi Mistik Baru & Taysen silang antara P2 dan P3
+            # As diambil dari Mistik Prize 2, Kop diambil dari Taysen Prize 3
+            asn = MB.get(p2_last[i % 4], last_p1[0])
+            kop = TY.get(p3_last[i % 4], last_p1[1])
             
-            l3, l4 = f"{kop}{l2}", f"{asn}{kop}{l2}"
-            
-            if l3 not in seen_3d and len(top3) < 15:
-                top3.append(l3); seen_3d.add(l3)
-            if l4 not in seen_4d and len(top4) < 15:
-                top4.append(l4); seen_4d.add(l4)
+            # Jika ada cluster, paksa angka cluster masuk ke struktur 4D
+            if hot_clusters and i == 0: 
+                asn = hot_clusters[0]
+
+            top3.append(f"{kop}{l2}")
+            top4.append(f"{asn}{kop}{l2}")
         except: pass
 
     return {
-        'version': 'V20.0 [QUANTUM MONSTER]',
+        'version': 'V23.0 [HYPER-DIMENSION]',
         'market': market_name,
         'last_res': last_p1, 'p2_last': p2_last, 'p3_last': p3_last,
         'am': top_digits[:4], 'ai': top_digits[4:6],
-        'bbfs': bbfs_6d,
+        'bbfs': top_digits,
         'top2': top2, 'top3': top3, 'top4': top4,
         'shio': SHIO_MAP.get((int(last_p1) % 12) or 12, "N/A"),
         'macau': f"{top2[0]} - {top2[1]}" if len(top2) > 1 else "-"
     }
-
+    
 @app.route('/', methods=['GET', 'POST'])
 def index():
     analysis, selected = None, None
