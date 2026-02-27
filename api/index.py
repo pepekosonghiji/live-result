@@ -22,36 +22,43 @@ SHIO_MAP = {
     7:"KELINCI", 8:"NAGA", 9:"ULAR", 10:"KUDA", 11:"KAMBING", 12:"MONYET"
 }
 
-# --- [SOURCE DATA - JANGAN DIUBAH] ---
+# --- [SOURCE DATA - DOMAIN UMUM] ---
+# URL: nfx1avfcy8.salamtarget.com
 TARGET_POOLS = {
     'BEIJING': 'p24492', 'BUSAN POOLS':'p16063', 'CAMBODIA': 'p3501', 
-    'DANANG':'p22816', 'HONGKONG LOTTO': 'p2263', 'HONGKONG POOLS': 'HK_SPECIAL',
-    'JEJU':'p22815', 'MIAMI-MID':'p24488', 'MONTANA':'p23588', 'OREGON 12':'p12524',
+    'DANANG':'p22816', 'HONGKONG LOTTO': 'p2263', 'HONGKONG POOLS': 'HK_SPECIAL','JEJU':'p22815',
     'OREGON 3':'p12521', 'OREGON 6':'p12522', 'OREGON 9':'p12523', 'OSAKA':'p28422',
     'PENANG':'p22817', 'PHUKET':'p28435', 'SAPPORO':'p22814', 'SEOUL':'p28502',
     'SINGAPORE POOLS': 'p2264', 'SYDNEY LOTTO': 'p2262', 'TORONTOMID':'p13976',
-    'WASHINGMID':'p24508', 'WUHAN':'p28615', 'MACAU': 'm17','GREECE':'p8584',
-    'MANHATTAN':'p23590','TORONTOEVE':'p13975','ORLANDO':'p21384','COLORADO':'p23589'
+    'WASHINGMID':'p24508', 'WUHAN':'p28615', 'MACAU': 'm17','GREECE':'p8584'
 }
 
-def fetch_results(market_code):
-    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'}
-    try:
-        # 1. MODE MANUAL MACAU
-        if market_code == "MACAU":
-            # Karena dijalankan di Flask/Web, input() tidak bisa digunakan secara langsung.
-            # Bagian ini tetap saya tulis sesuai script Anda, namun biasanya di web menggunakan form.
-            return []
+# --- [SOURCE DATA - DOMAIN BARU] ---
+# URL: ux0sa.percaya4d.live
+SPECIAL_POOLS = {
+    'TAIWAN': 'p12501','CHINA':'p12499','JAPAN':'p24128',
+    'PCSO':'p32340','ACEH':'p29593','BALI':'p28800','BANDUNG':'p29590',
+    'NTT POOLS':'p30577','DEWATA':'p27489'
+}
 
-        # 2. JIKA BUKAN MACAU
-        with httpx.Client(timeout=15.0, verify=False, follow_redirects=True) as client:
-            if market_code == "HK_SPECIAL":
+def fetch_results(market_code, max_pages=3):
+    """
+    Fetch results with Deep History Support (Upgrade V24.0: Default max_pages=3)
+    """
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+    }
+    results = []
+    
+    try:
+        # Penanganan Khusus HK_SPECIAL
+        if market_code == "HK_SPECIAL":
+            with httpx.Client(timeout=15.0, verify=False, follow_redirects=True) as client:
                 url = "https://tabelsemalam.com/"
                 r = client.get(url, headers=headers)
                 soup = BeautifulSoup(r.text, 'html.parser')
                 table = soup.find('table')
                 if not table: return []
-                res = []
                 tbody = table.find('tbody')
                 if not tbody: return []
                 for row in tbody.find_all('tr'):
@@ -59,153 +66,235 @@ def fetch_results(market_code):
                     if len(tds) >= 2:
                         p1 = re.sub(r'\D', '', tds[1].text.strip())
                         if len(p1) == 4:
-                            res.append([p1, '', ''])
-                return res[:40]
+                            results.append([p1, '0000', '0000'])
+                return results[:40]
 
-            # 3. JALUR UMUM SALAMTARGET
-            url = f"https://nfx1avfcy8.salamtarget.com/history/result-mobile/{market_code}-pool-1"
-            r = client.get(url, headers=headers)
-            soup = BeautifulSoup(r.text, 'html.parser')
-            table = soup.find('table', class_='table-history')
-            if not table: return []
-            
-            results = []
-            rows = table.find('tbody').find_all('tr')
-            for row in rows:
-                tds = row.find_all('td')
-                if len(tds) >= 4:
-                    def get_num(td_elem):
-                        link = td_elem.find('a')
-                        return re.sub(r'\D', '', link.text if link else td_elem.text)
-                    p1 = get_num(tds[3])
-                    if len(p1) == 4:
-                        p2 = get_num(tds[4]) if len(tds) >= 5 else "0000"
-                        p3 = get_num(tds[5]) if len(tds) >= 6 else "0000"
-                        results.append([p1, p2, p3])
-            return results[:40]
+        # LOGIKA PEMILIHAN DOMAIN OTOMATIS
+        # Jika kode ada di SPECIAL_POOLS, gunakan domain baru.
+        if market_code in SPECIAL_POOLS.values():
+            target_domain = "ux0sa.percaya4d.live"
+        else:
+            target_domain = "nfx1avfcy8.salamtarget.com"
+
+        # JALUR FETCHING
+        with httpx.Client(timeout=15.0, verify=False, follow_redirects=True) as client:
+            for page in range(1, max_pages + 1):
+                url = f"https://{target_domain}/history/result-mobile/{market_code}-pool-{page}"
+                r = client.get(url, headers=headers)
+                if r.status_code != 200: break
+                
+                soup = BeautifulSoup(r.text, 'html.parser')
+                table = soup.find('table', class_='table-history')
+                if not table: break
+                
+                rows = table.find('tbody').find_all('tr')
+                page_data_found = False
+                for row in rows:
+                    tds = row.find_all('td')
+                    if len(tds) >= 4:
+                        def get_num(td_elem):
+                            link = td_elem.find('a')
+                            return re.sub(r'\D', '', link.text if link else td_elem.text)
+                        
+                        p1 = get_num(tds[3])
+                        if len(p1) == 4:
+                            p2 = get_num(tds[4]) if len(tds) >= 5 else "0000"
+                            p3 = get_num(tds[5]) if len(tds) >= 6 else "0000"
+                            results.append([p1, p2, p3])
+                            page_data_found = True
+                if not page_data_found: break
+            return results[:100] 
+
     except Exception as e:
-        print(f"Fetch Error: {e}")
-        return []
+        print(f"Deep Fetch Error: {e}")
+        return results
 
 def get_comprehensive_logic(all_res_data, market_name):
     """
-    QUANTUM HYPER-DIMENSION V23.0
-    Fokus: Anti-Cluster Shield, Triple-Digit Resonance, & Matrix Positioning.
+    QUANTUM HYPER-DIMENSION V24.7 [ULTIMATE-SNIPER]
+    Pembaruan: Triple-Layer Verification (Shadow Logic, Balance Sum, Tail Control).
     """
+    if not all_res_data:
+        return {"error": "No data available"}
+
+    # --- [INISIALISASI DATA] ---
     last_p1 = all_res_data[0][0]  
     p1_list = [d[0] for d in all_res_data] 
-    p2_last = all_res_data[0][1] if len(all_res_data[0]) > 1 and all_res_data[0][1] else "0000"
-    p3_last = all_res_data[0][2] if len(all_res_data[0]) > 2 and all_res_data[0][2] else "0000"
 
-    # --- 1. CLUSTER DETECTION (ANTI-ANOMALI) ---
-    # Melacak angka yang mendominasi P1, P2, P3 (seperti angka 1 di result 1181)
+    p2_raw = all_res_data[0][1] if len(all_res_data[0]) > 1 else "0000"
+    p3_raw = all_res_data[0][2] if len(all_res_data[0]) > 2 else "0000"
+
+    p2_last = p2_raw if p2_raw != "0000" else (all_res_data[1][0] if len(all_res_data) > 1 else "0000")
+    p3_last = p3_raw if p3_raw != "0000" else (all_res_data[2][0] if len(all_res_data) > 2 else "0000")
+
+    # --- [A. ANALISA SHIO MATI] ---
+    shio_off_id = (int(last_p1[2:]) % 12) or 12
+
+    # --- [B. INTERVAL GAP ANALYSIS] ---
+    gap_scores = {str(i): 0 for i in range(10)}
+    for pos in [0, 3]: 
+        for digit in range(10):
+            gap_count = 0
+            for res in p1_list:
+                if res[pos] == str(digit): break
+                gap_count += 1
+            if gap_count > 10:
+                gap_scores[str(digit)] += 180
+
+    # --- [C. NEURAL & CLUSTER SCORING] ---
+    all_30d = "".join(p1_list[:30])
+    freq_map = Counter(all_30d)
+    cold_digits = [d for d in "0123456789" if freq_map[d] < (len(all_30d)/10)]
     all_p_data = last_p1 + p2_last + p3_last
     cluster_map = Counter(all_p_data)
-    # Angka yang muncul > 2x dalam satu putaran dianggap 'Cluster'
     hot_clusters = [num for num, count in cluster_map.items() if count >= 2]
-    
-    # Deteksi Pola Sandwich & Twin Depan/Belakang
-    is_sandwich = last_p1[0] == last_p1[3]
-    is_twin_front = last_p1[0] == last_p1[1]
-    is_twin_back = last_p1[2] == last_p1[3]
-    
-    # --- 2. ADVANCED SCORING (DIMENSION SHIFT) ---
-    all_7d = "".join(p1_list[:7])
-    counts_7d = Counter(all_7d)
     
     scores = {str(i): 0 for i in range(10)}
     for d in scores:
-        # A. Cluster Bonus: Jika angka muncul kuat di P2/P3, dia wajib masuk radar
-        if d in hot_clusters: scores[d] += 180
-        # B. Shadow Resonance: Indeks & Mistik dari P2/P3 (Bukan cuma P1)
-        if d in [ID.get(x) for x in (p2_last + p3_last)]: scores[d] += 70
-        # C. Missing Gap: Angka yang benar-benar hilang dalam 10 hari terakhir
-        if counts_7d[d] == 0: scores[d] += 200
-        # D. Taysen Shift: Mencari angka 'lompatan'
-        if d in [TY.get(x) for x in last_p1]: scores[d] += 50
+        if d in hot_clusters: scores[d] += 220 
+        if d in [ID.get(x) for x in (p2_last + p3_last)]: scores[d] += 85
+        if d in cold_digits: scores[d] += 150 
+        scores[d] += gap_scores[d] 
 
-    top_digits = "".join([x[0] for x in sorted(scores.items(), key=lambda x: x[1], reverse=True)[:6]])
+        for pos in range(4):
+            if len(all_res_data) > 2:
+                if d == all_res_data[1][0][pos] == all_res_data[2][0][pos]:
+                    scores[d] += 120
 
-    # --- 3. BIJI HYPER (Multi-Layer Sum) ---
-    biji_hist = [(sum(int(d) for d in res) % 9 or 9) for res in p1_list[:20]]
-    # Menghindari Biji yang baru keluar & memprioritaskan Biji yang sedang 'Haus' (Jarang muncul)
-    biji_target = [b for b, c in Counter(biji_hist).most_common()[-4:]]
+    # Mengambil 9 digit terkuat (Layer 1)
+    top_digits = "".join([x[0] for x in sorted(scores.items(), key=lambda x: x[1], reverse=True)[:9]])
 
-    # --- 4. FILTRASI BRUTAL (7 DIMENSI) ---
+    # --- [D. BIJI TARGETING] ---
+    biji_p1 = (int(last_p1[2]) + int(last_p1[3])) % 9 or 9
+    biji_p2 = (int(p2_last[2]) + int(p2_last[3])) % 9 or 9
+    biji_off = {biji_p1, biji_p2}
+    biji_target = [b for b in range(1, 10) if b not in biji_off]
+
+    # --- [E. LAYER 1: GENERASI 30 KANDIDAT AWAL] ---
     raw_2d = [''.join(p) for p in itertools.product(top_digits, repeat=2)]
-    hyper_2d = []
+    candidates_pool = []
     seen = set()
+
+    shadow_targets = [ML.get(last_p1[2]), TY.get(last_p1[3]), ID.get(last_p1[3])]
 
     for line in raw_2d:
         if line in seen: continue
         h, t = line[0], line[1]
         b_line = (int(h) + int(t)) % 9 or 9
-        score_2d = 0
-
-        # GERBANG 1: Biji Hyper (Wajib lolos)
-        if b_line not in biji_target: continue
-
-        # GERBANG 2: Cluster Connection
-        if any(d in hot_clusters for d in [h, t]): score_2d += 250
         
-        # GERBANG 3: Polarity Logic (Odd-Even Balance)
-        if (int(h) % 2) != (int(t) % 2): score_2d += 120
+        score_cand = 0
+        if (h in cold_digits and t in hot_clusters) or (t in cold_digits and h in hot_clusters): score_cand += 500
+        if (int(h) % 2) != (int(t) % 2): score_cand += 120
         
-        # GERBANG 4: High-Low Split
-        if (int(h) >= 5 and int(t) < 5) or (int(h) < 5 and int(t) >= 5): score_2d += 100
+        if h in shadow_targets or t in shadow_targets: score_cand += 150
+        
+        if line in [res[2:] for res in p1_list[:2]]: score_cand -= 300
 
-        # GERBANG 5: Anti-Zonk (Buang angka yang sama persis dengan 2D terakhir)
-        if line == last_p1[2:]: continue
-
-        # GERBANG 6: Twin Shield 3.0 (Deteksi Twin Balasan)
-        if h == t:
-            # Jika kemarin Twin (1181), hari ini Twin hanya boleh muncul jika skor sangat tinggi
-            if is_twin_front or is_twin_back: score_2d += 150
-            elif any(d in hot_clusters for d in h): score_2d += 200
-            else: continue # Buang twin tanpa dasar cluster
-
-        hyper_2d.append((line, score_2d))
+        candidates_pool.append((line, score_cand, b_line))
         seen.add(line)
 
-    # SORTING TOP 5 (Sangat Selektif)
-    top2 = [x[0] for x in sorted(hyper_2d, key=lambda x: x[1], reverse=True)[:5]]
+    pre_top_30 = sorted(candidates_pool, key=lambda x: x[1], reverse=True)[:30]
 
-    # --- 5. HYPER 3D/4D (MATRIX POSITIONING) ---
+    # --- [F. LAYER 2: VERIFIKASI FINAL & ELIMINASI SAMPAH DINAMIS] ---
+    final_jitu_2d = []
+    tail_counts = Counter() 
+
+    for line, base_score, b_val in pre_top_30:
+        shio_check = (int(line) % 12) or 12
+        final_v_score = base_score
+        
+        # 1. Verifikasi Biji (Wajib)
+        if b_val not in biji_target: continue
+        
+        # 2. Verifikasi Shio Mati (Hukuman sangat berat -1000)
+        if shio_check == shio_off_id: final_v_score -= 1000
+        
+        # 3. Verifikasi Histori P2/P3 (Anti-Zonk)
+        if line in [p2_last[2:], p3_last[2:]]: final_v_score -= 600
+        
+        # 4. Filter Balance Sum (Buang angka terlalu kecil/besar)
+        if int(line) < 7 or int(line) > 93: final_v_score -= 400
+        
+        # 5. Tail Distribution (Maksimal 3 angka per ekor)
+        if tail_counts[line[1]] >= 3: final_v_score -= 500
+        
+        # 6. Verifikasi Twin (Hanya jika ada indikasi twin sebelumnya)
+        if line[0] == line[1]:
+            if not (last_p1[0] == last_p1[1] or last_p1[2] == last_p1[3]):
+                final_v_score -= 500
+
+        # --- [KRITERIA ELIMINASI LANJUTAN] ---
+        # Hanya masukkan angka yang memiliki skor akhir benar-benar kuat (> 350)
+        # Angka yang skornya di bawah ini dianggap SAMPAH statistik.
+        if final_v_score > 350: 
+            final_jitu_2d.append((line, final_v_score))
+            tail_counts[line[1]] += 1
+
+    # Sorting hasil akhir berdasarkan kekuatan verifikasi (Best of the Best)
+    # Tidak lagi memaksa harus 15 baris. Jika hanya 6 yang jitu, tampilkan 6.
+    final_sorted_data = sorted(final_jitu_2d, key=lambda x: x[1], reverse=True)
+    top2 = [x[0] for x in final_sorted_data]
+
+    # --- [G. 3D & 4D MATRIX POSITIONING] ---
     top3, top4 = [], []
+    pos_candidates = [x[0] for x in sorted(scores.items(), key=lambda x: x[1], reverse=True)[:8]]
+
     for i, l2 in enumerate(top2):
         try:
-            # Menggunakan kombinasi Mistik Baru & Taysen silang antara P2 dan P3
-            # As diambil dari Mistik Prize 2, Kop diambil dari Taysen Prize 3
-            asn = MB.get(p2_last[i % 4], last_p1[0])
-            kop = TY.get(p3_last[i % 4], last_p1[1])
+            kop = TY.get(p3_last[i % 4], pos_candidates[(i+1) % 8])
+            as_val = MB.get(all_res_data[1][0][0] if len(all_res_data) > 1 else last_p1[0], pos_candidates[(i+2) % 8])
             
-            # Jika ada cluster, paksa angka cluster masuk ke struktur 4D
-            if hot_clusters and i == 0: 
-                asn = hot_clusters[0]
-
+            # Anti-Clash Logic: Kop tidak boleh sama dengan Kepala
+            if kop == l2[0]:
+                kop = ID.get(kop, pos_candidates[(i+3) % 8])
+            
             top3.append(f"{kop}{l2}")
-            top4.append(f"{asn}{kop}{l2}")
-        except: pass
+            top4.append(f"{as_val}{kop}{l2}")
+        except:
+            top3.append(f"0{l2}")
+            top4.append(f"00{l2}")
+
+    if top2:
+        combined_digits = "".join(top2)
+        top2_freq = Counter(combined_digits)
+        refined_bbfs = "".join([x[0] for x in top2_freq.most_common(6)])
+        if len(refined_bbfs) < 6:
+            for d in top_digits:
+                if d not in refined_bbfs: refined_bbfs += d
+                if len(refined_bbfs) == 6: break
+    else:
+        refined_bbfs = top_digits[:6]
+    refined_bbfs = "".join(sorted(refined_bbfs))
 
     return {
-        'version': 'V23.0 [HYPER-DIMENSION]',
+        'version': 'V24.7 [ULTIMATE-SNIPER]',
         'market': market_name,
-        'last_res': last_p1, 'p2_last': p2_last, 'p3_last': p3_last,
-        'am': top_digits[:4], 'ai': top_digits[4:6],
-        'bbfs': top_digits,
-        'top2': top2, 'top3': top3, 'top4': top4,
-        'shio': SHIO_MAP.get((int(last_p1) % 12) or 12, "N/A"),
-        'macau': f"{top2[0]} - {top2[1]}" if len(top2) > 1 else "-"
+        'last_res': last_p1,
+        'p2_last': p2_last,
+        'p3_last': p3_last,
+        'am': top_digits[:4], 
+        'ai': top_digits[4:7],
+        'bbfs': refined_bbfs,
+        'top2': top2,
+        'top3': top3, 
+        'top4': top4,
+        'shio': SHIO_MAP.get((int(last_p1[2:]) % 12) or 12, "N/A"),
+        'shio_off': SHIO_MAP.get(shio_off_id, "N/A"),
+        'macau': f"{top2[0]} - {top2[1]}" if len(top2) > 1 else (top2[0] if top2 else "-")
     }
-    
+
 @app.route('/', methods=['GET', 'POST'])
 def index():
     analysis, selected = None, None
-    markets = sorted(TARGET_POOLS.keys())
+    # Gabungkan semua pasaran untuk dropdown menu
+    ALL_POOLS = {**TARGET_POOLS, **SPECIAL_POOLS}
+    markets = sorted(ALL_POOLS.keys())
+    
     if request.method == 'POST':
         selected = request.form.get('market')
-        if selected in TARGET_POOLS:
-            res_data = fetch_results(TARGET_POOLS[selected])
+        if selected in ALL_POOLS:
+            market_code = ALL_POOLS[selected]
+            res_data = fetch_results(market_code, max_pages=3)
             if res_data and len(res_data) >= 8:
                 analysis = get_comprehensive_logic(res_data, selected)
             else:
